@@ -7,6 +7,7 @@ matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
+# Made with Github Copilot
 
 class RotationApp:
     def __init__(self, root):
@@ -17,44 +18,77 @@ class RotationApp:
         main = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
         main.pack(fill=tk.BOTH, expand=True)
 
-        left = ttk.Frame(main, padding=12, width=350)
+        left = ttk.Frame(main, width=350)
         right = ttk.Frame(main)
         main.add(left, weight=0)
         main.add(right, weight=1)
 
+        self.left_canvas = tk.Canvas(left, highlightthickness=0, width=330)
+        left_scrollbar = ttk.Scrollbar(
+            left, orient=tk.VERTICAL, command=self.left_canvas.yview
+        )
+        self.left_canvas.configure(yscrollcommand=left_scrollbar.set)
+        left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        controls = ttk.Frame(self.left_canvas, padding=12)
+        self.left_canvas_window = self.left_canvas.create_window(
+            (0, 0), window=controls, anchor="nw"
+        )
+        controls.bind("<Configure>", self._update_scroll_region)
+        self.left_canvas.bind("<Configure>", self._resize_controls)
+        self.root.bind_all("<MouseWheel>", self._scroll_left_panel)
+
         self.frame_values = {"new_frame": {}, "transformation": {}}
         self.matrix_texts = {}
-        self.input_status = ttk.Label(left, text="", foreground="firebrick")
+        self.input_status = ttk.Label(controls, text="", foreground="firebrick")
 
-        ttk.Label(left, text="New frame", font=("TkDefaultFont", 10, "bold")).pack(
-            anchor="w", pady=(0, 4)
+        ttk.Button(controls, text="Reset View", command=self.reset_view).pack(
+            fill=tk.X, pady=(0, 4)
         )
-        self._add_transform_controls(left, "new_frame")
-        self._add_matrix_display(left, "New frame T matrix", "new_frame")
-
-        ttk.Separator(left, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
-        ttk.Label(
-            left, text="Transformation matrix", font=("TkDefaultFont", 10, "bold")
-        ).pack(anchor="w", pady=(0, 4))
-        self._add_transform_controls(left, "transformation")
-        self._add_matrix_display(left, "Transformation T matrix", "transformation")
-        self._add_matrix_display(left, "Resulting T matrix (T1 x T2)", "result")
-
-        self.input_status.pack(anchor="w", pady=(4, 0))
-        ttk.Button(left, text="Reset View", command=self.reset_view).pack(
-            fill=tk.X, pady=(8, 4)
+        ttk.Button(controls, text="Reset position", command=self.reset_position).pack(
+            fill=tk.X, pady=4
         )
-        ttk.Button(left, text="Reset Transforms", command=self.reset_transforms).pack(
-            fill=tk.X
-        )
-
         self.grid_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
-            left,
+            controls,
             text="Show grid",
             variable=self.grid_var,
             command=self.update_plot,
-        ).pack(anchor="w", pady=(10, 0))
+        ).pack(anchor="w", pady=4)
+
+        self.plot_t1_t2_var = tk.BooleanVar(value=True)
+        self.plot_t2_t1_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            controls,
+            text="Plot T1*T2",
+            variable=self.plot_t1_t2_var,
+            command=self.update_plot,
+        ).pack(anchor="w", pady=2)
+        ttk.Checkbutton(
+            controls,
+            text="Plot T2*T1",
+            variable=self.plot_t2_t1_var,
+            command=self.update_plot,
+        ).pack(anchor="w", pady=2)
+
+        ttk.Separator(controls, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
+        ttk.Label(
+            controls, text="T1", font=("TkDefaultFont", 10, "bold")
+        ).pack(anchor="w", pady=(0, 4))
+        self._add_transform_controls(controls, "new_frame")
+        self._add_matrix_display(controls, "T1 matrix", "new_frame")
+
+        ttk.Separator(controls, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
+        ttk.Label(controls, text="T2", font=("TkDefaultFont", 10, "bold")).pack(
+            anchor="w", pady=(0, 4)
+        )
+        self._add_transform_controls(controls, "transformation")
+        self._add_matrix_display(controls, "T2 matrix", "transformation")
+
+        ttk.Separator(controls, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
+        self._add_matrix_display(controls, "T1*T2 matrix", "result_t1_t2")
+        self._add_matrix_display(controls, "T2*T1 matrix", "result_t2_t1")
+        self.input_status.pack(anchor="w", pady=(6, 0))
 
         self.figure = Figure(figsize=(8, 6), dpi=100)
         self.ax = self.figure.add_subplot(111, projection="3d")
@@ -67,6 +101,18 @@ class RotationApp:
         self.toolbar.update()
 
         self.update_plot()
+
+    def _update_scroll_region(self, _event=None):
+        self.left_canvas.configure(scrollregion=self.left_canvas.bbox("all"))
+
+    def _resize_controls(self, event):
+        self.left_canvas.itemconfigure(self.left_canvas_window, width=event.width)
+
+    def _scroll_left_panel(self, event):
+        pointer_x = self.root.winfo_pointerx()
+        canvas_left = self.left_canvas.winfo_rootx()
+        if canvas_left <= pointer_x <= canvas_left + self.left_canvas.winfo_width():
+            self.left_canvas.yview_scroll(int(-event.delta / 120), "units")
 
     def _add_transform_controls(self, parent, transform_name):
         ttk.Label(parent, text="Position (X, Y, Z)").pack(anchor="w", pady=(3, 0))
@@ -209,10 +255,12 @@ class RotationApp:
             self.ax.set_yticks([])
             self.ax.set_zticks([])
 
-    def reset_transforms(self):
+    def reset_position(self):
         for values in self.frame_values.values():
-            for value in values.values():
-                value.set("0")
+            for name in ("X", "Y", "Z"):
+                values[name].set("0")
+            for name in ("Roll", "Pitch", "Yaw"):
+                values[name].set("0")
         self.update_plot()
 
     def reset_view(self):
@@ -231,29 +279,56 @@ class RotationApp:
             self.input_status.configure(text="Enter finite numbers in every field.")
             for matrix_name in self.matrix_texts:
                 self._set_matrix_text(matrix_name, [])
-            first_matrix = second_matrix = result_matrix = None
+            first_matrix = second_matrix = None
             first_rotation = second_rotation = None
-            first_origin = result_origin = (0.0, 0.0, 0.0)
+            first_origin = (0.0, 0.0, 0.0)
+            result_t1_t2_matrix = result_t2_t1_matrix = None
+            result_t1_t2_rotation = result_t2_t1_rotation = None
+            result_t1_t2_origin = result_t2_t1_origin = (0.0, 0.0, 0.0)
         else:
             self.input_status.configure(text="")
             first_matrix, first_rotation, first_origin = self._make_transform(first_values)
             second_matrix, second_rotation, _ = self._make_transform(second_values)
-            result_matrix = self._multiply_transforms(first_matrix, second_matrix)
-            result_rotation = tuple(
-                tuple(result_matrix[row][column] for column in range(3))
+
+            result_t1_t2_matrix = self._multiply_transforms(first_matrix, second_matrix)
+            result_t2_t1_matrix = self._multiply_transforms(second_matrix, first_matrix)
+            result_t1_t2_rotation = tuple(
+                tuple(result_t1_t2_matrix[row][column] for column in range(3))
                 for row in range(3)
             )
-            result_origin = tuple(result_matrix[row][3] for row in range(3))
+            result_t2_t1_rotation = tuple(
+                tuple(result_t2_t1_matrix[row][column] for column in range(3))
+                for row in range(3)
+            )
+            result_t1_t2_origin = tuple(result_t1_t2_matrix[row][3] for row in range(3))
+            result_t2_t1_origin = tuple(result_t2_t1_matrix[row][3] for row in range(3))
             self._set_matrix_text("new_frame", first_matrix)
             self._set_matrix_text("transformation", second_matrix)
-            self._set_matrix_text("result", result_matrix)
+            self._set_matrix_text("result_t1_t2", result_t1_t2_matrix)
+            self._set_matrix_text("result_t2_t1", result_t2_t1_matrix)
 
-        extent = max(2.5, *(abs(value) + 1.3 for value in (*first_origin, *result_origin)))
+        visible_origins = [first_origin]
+        if self.plot_t1_t2_var.get():
+            visible_origins.append(result_t1_t2_origin)
+        if self.plot_t2_t1_var.get():
+            visible_origins.append(result_t2_t1_origin)
+        extent = max(
+            2.5,
+            *(abs(value) + 1.3 for origin in visible_origins for value in origin),
+        )
         self._draw_reference_axes(extent)
         if first_matrix is not None:
             self._draw_frame(first_origin, first_rotation, ":", 2.0, "1")
-            self._draw_translation_projection(result_origin)
-            self._draw_frame(result_origin, result_rotation, "-", 2.5, "")
+            if self.plot_t1_t2_var.get():
+                self._draw_translation_projection(result_t1_t2_origin)
+                self._draw_frame(
+                    result_t1_t2_origin, result_t1_t2_rotation, "-", 2.5, "12"
+                )
+            if self.plot_t2_t1_var.get():
+                self._draw_translation_projection(result_t2_t1_origin)
+                self._draw_frame(
+                    result_t2_t1_origin, result_t2_t1_rotation, "--", 2.5, "21"
+                )
 
         self.ax.set_xlim(-extent, extent)
         self.ax.set_ylim(-extent, extent)
