@@ -60,34 +60,34 @@ class RotationApp:
         self.plot_t2_t1_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             controls,
-            text="Plot T1*T2",
+            text="Plot T1*T2 (Tsb * T)",
             variable=self.plot_t1_t2_var,
             command=self.update_plot,
         ).pack(anchor="w", pady=2)
         ttk.Checkbutton(
             controls,
-            text="Plot T2*T1",
+            text="Plot T2*T1 (T * Tsb)",
             variable=self.plot_t2_t1_var,
             command=self.update_plot,
         ).pack(anchor="w", pady=2)
 
         ttk.Separator(controls, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
         ttk.Label(
-            controls, text="T1", font=("TkDefaultFont", 10, "bold")
+            controls, text="T1 (Tsb)", font=("TkDefaultFont", 10, "bold")
         ).pack(anchor="w", pady=(0, 4))
         self._add_transform_controls(controls, "new_frame")
-        self._add_matrix_display(controls, "T1 matrix", "new_frame")
+        self._add_matrix_display(controls, "T1 (Tsb) matrix", "new_frame")
 
         ttk.Separator(controls, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
-        ttk.Label(controls, text="T2", font=("TkDefaultFont", 10, "bold")).pack(
+        ttk.Label(controls, text="T2 (T)", font=("TkDefaultFont", 10, "bold")).pack(
             anchor="w", pady=(0, 4)
         )
         self._add_transform_controls(controls, "transformation")
-        self._add_matrix_display(controls, "T2 matrix", "transformation")
+        self._add_matrix_display(controls, "T2 (T) matrix", "transformation")
 
         ttk.Separator(controls, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=8)
-        self._add_matrix_display(controls, "T1*T2 matrix", "result_t1_t2")
-        self._add_matrix_display(controls, "T2*T1 matrix", "result_t2_t1")
+        self._add_matrix_display(controls, "T1*T2 (Tsb * T) matrix", "result_t1_t2")
+        self._add_matrix_display(controls, "T2*T1 (T * Tsb) matrix", "result_t2_t1")
         self.input_status.pack(anchor="w", pady=(6, 0))
 
         self.figure = Figure(figsize=(8, 6), dpi=100)
@@ -211,12 +211,13 @@ class RotationApp:
                 0, 0, 0, *endpoint, color=color, linewidth=1.8, arrow_length_ratio=0.15
             )
             self.ax.text(*endpoint, label, color=color, fontweight="bold")
+            self.ax.text(*(0,0,0), "s", color="black", fontweight="bold")
 
         self.ax.plot([-limit, limit], [0, 0], [0, 0], color="black", linewidth=0.7)
         self.ax.plot([0, 0], [-limit, limit], [0, 0], color="black", linewidth=0.7)
         self.ax.plot([0, 0], [0, 0], [-limit, limit], color="black", linewidth=0.7)
 
-    def _draw_frame(self, origin, rotation, linestyle, linewidth, label_suffix):
+    def _draw_frame(self, origin, rotation, linestyle, linewidth, label_suffix,center_label):
         colors = ("red", "limegreen", "blue")
         for index, color in enumerate(colors):
             endpoint = tuple(
@@ -237,6 +238,7 @@ class RotationApp:
                     color=color,
                     fontweight="bold",
                 )
+        self.ax.text(*origin, f"{center_label}", color="black", fontweight="bold")
 
     def _draw_translation_projection(self, origin):
         x, y, z = origin
@@ -318,16 +320,16 @@ class RotationApp:
         )
         self._draw_reference_axes(extent)
         if first_matrix is not None:
-            self._draw_frame(first_origin, first_rotation, ":", 2.0, "1")
+            self._draw_frame(first_origin, first_rotation, ":", 2.0, "1", "Tsb")
             if self.plot_t1_t2_var.get():
                 self._draw_translation_projection(result_t1_t2_origin)
                 self._draw_frame(
-                    result_t1_t2_origin, result_t1_t2_rotation, "-", 2.5, "12"
+                    result_t1_t2_origin, result_t1_t2_rotation, "-", 2.5, "12","Tsb * T"
                 )
             if self.plot_t2_t1_var.get():
                 self._draw_translation_projection(result_t2_t1_origin)
                 self._draw_frame(
-                    result_t2_t1_origin, result_t2_t1_rotation, "--", 2.5, "21"
+                    result_t2_t1_origin, result_t2_t1_rotation, "--", 2.5, "21","T * Tsb"
                 )
 
         self.ax.set_xlim(-extent, extent)
