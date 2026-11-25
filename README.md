@@ -1,5 +1,5 @@
 # Transformation Matrix Multiplication Visualizer
-An interactive interface to visualize the effect of transformation matrix multipllication to a frame. Shows the effect of pre-multiplication and post-multiplication of transformation matrix. This work is based on Chapter 3 of Lynch, K. and Park, F. (2017) Modern Robotics: Mechanics, Planning, and Control. Made with Copilot (GPT 6 Luna). 
+An interactive interface to visualize the effect of transformation matrix multipllication to a frame. Shows the effect of pre-multiplication and post-multiplication of transformation matrix. This work is based on Chapter 3 of Modern Robotics: Mechanics, Planning, and Control by Kevin M. Lynch and Frank C. Park. Made with Copilot (GPT 6 Luna). 
 
 | Legends | X axis | Y axis | Z axis | Center |
 | - | - | - | - | - |
